@@ -7,6 +7,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/insightsoop-main/receipt-tmoney
     steps:
       - uses: actions/checkout@v4
 
@@ -31,7 +33,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: ${{ env.IMAGE }}:latest
 
       - name: Deploy to EC2 via SSM
         uses: aws-actions/configure-aws-credentials@v4
@@ -46,7 +48,7 @@ jobs:
             --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "docker pull ghcr.io/${{ github.repository }}:latest",
+              "docker pull ghcr.io/insightsoop-main/receipt-tmoney:latest",
               "docker stop receipt-tmoney || true",
               "docker rm receipt-tmoney || true",
               "docker run -d --name receipt-tmoney -p 8080:8080 \
@@ -55,5 +57,5 @@ jobs:
                 -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
                 -e HTML_VIEW_HOST=${{ secrets.HTML_VIEW_HOST }} \
                 -e DATA_HOST=${{ secrets.DATA_HOST }} \
-                ghcr.io/${{ github.repository }}:latest"
+                ghcr.io/insightsoop-main/receipt-tmoney:latest"
             ]'
