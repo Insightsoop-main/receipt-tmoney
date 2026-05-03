@@ -48,7 +48,7 @@ public class ReceiptService {
         TmoneyReceipt receipt = latest.get();
         return TmoneyResponseDto.ok(
                 receipt.getUuid(),
-                buildHtmlViewLink(receipt.getUuid()),
+                buildHtmlViewLink(receipt.getTagId()),
                 buildDataReqLink(receipt.getPartnerCode(), receipt.getPartnerReqUuid())
         );
     }
@@ -79,13 +79,13 @@ public class ReceiptService {
 
         return TmoneyResponseDto.ok(
                 uuid,
-                buildHtmlViewLink(uuid),
+                buildHtmlViewLink(req.getTagId()),
                 buildDataReqLink(req.getPartnerCode(), req.getPartnerReqUuid())
         );
     }
 
-    private String buildHtmlViewLink(String uuid) {
-        return htmlViewHost + "?uuid=" + uuid;
+    private String buildHtmlViewLink(String tagId) {
+        return htmlViewHost + "?t=" + tagId;
     }
 
     private String buildDataReqLink(String partnerCode, String partnerReqUuid) {
