@@ -46,19 +46,40 @@ jobs:
           aws-region: ap-northeast-2
 
       - name: Run deploy command on EC2
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          HTML_VIEW_HOST: ${{ secrets.HTML_VIEW_HOST }}
+          DATA_HOST: ${{ secrets.DATA_HOST }}
+          EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
         run: |
-          aws ssm send-command \
-            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
-            --document-name "AWS-RunShellScript" \
-            --parameters 'commands=[
-              "docker pull ghcr.io/insightsoop-main/receipt-tmoney:latest",
-              "docker stop receipt-tmoney || true",
-              "docker rm receipt-tmoney || true",
-              "docker run -d --name receipt-tmoney -p 8080:8080 \
-                -e DB_URL=${{ secrets.DB_URL }} \
-                -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
-                -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-                -e HTML_VIEW_HOST=${{ secrets.HTML_VIEW_HOST }} \
-                -e DATA_HOST=${{ secrets.DATA_HOST }} \
-                ghcr.io/insightsoop-main/receipt-tmoney:latest"
-            ]'
+          python3 << 'EOF'
+          import json, subprocess, os, shlex
+
+          docker_cmd = shlex.join([
+              'docker', 'run', '-d', '--name', 'receipt-tmoney',
+              '-p', '8080:8080',
+              '-e', f"DB_URL={os.environ['DB_URL']}",
+              '-e', f"DB_USERNAME={os.environ['DB_USERNAME']}",
+              '-e', f"DB_PASSWORD={os.environ['DB_PASSWORD']}",
+              '-e', f"HTML_VIEW_HOST={os.environ['HTML_VIEW_HOST']}",
+              '-e', f"DATA_HOST={os.environ['DATA_HOST']}",
+              'ghcr.io/insightsoop-main/receipt-tmoney:latest'
+          ])
+
+          commands = [
+              'docker pull ghcr.io/insightsoop-main/receipt-tmoney:latest',
+              'docker stop receipt-tmoney || true',
+              'docker rm receipt-tmoney || true',
+              docker_cmd,
+          ]
+
+          subprocess.run([
+              'aws', 'ssm', 'send-command',
+              '--instance-ids', os.environ['EC2_INSTANCE_ID'],
+              '--document-name', 'AWS-RunShellScript',
+              '--parameters', json.dumps({'commands': commands}),
+              '--region', 'ap-northeast-2',
+          ], check=True)
+          EOF
